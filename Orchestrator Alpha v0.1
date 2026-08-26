@@ -1,0 +1,251 @@
+import platform
+import subprocess
+import sys
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+current_os = platform.system().lower()
+
+
+def on_slider_change(value):
+    # Updates the text when the slider moves
+    value_label.setText(f"Current Value: {value}")
+
+
+def on_click(app_name, url):
+    if app_name == "Orchestrator":
+        sys.exit(0)
+    if current_os == "darwin":  # macOS
+        subprocess.run(["open", "-a", app_name, url])
+    elif current_os == "windows":  # Windows
+        subprocess.run(["cmd", "/c", "start", "chrome", url], shell=True)
+    elif current_os == "linux":  # Linux
+        subprocess.run(["google-chrome", url])
+
+
+def orchestrator_click(button_name):
+    if button_name == "Gmail":
+        on_click("Google Chrome", "https://mail.google.com/mail/u/0/#inbox")
+    elif button_name == "AoPS":
+        on_click("Google Chrome", "https://artofproblemsolving.com/")
+    elif button_name == "Quit":
+        on_click("Orchestrator", None)
+    elif button_name == "Home":
+        stacked_widget.setCurrentWidget(home_page)
+    elif button_name == "Settings":
+        stacked_widget.setCurrentWidget(settings_page)
+
+app = QApplication(sys.argv)
+
+window = QWidget()
+window.setWindowTitle("Orchestrator")
+window.resize(950, 550)
+
+# 1. STYLESHEETS
+action_btn_style = """
+    QPushButton {
+        background-color: #0763f7;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 10px;
+        border: 2px solid #D93025;
+        padding: 25px 35px;
+        min-width: 140px;
+    }
+    QPushButton:hover {
+        background-color: #2273f5;
+        cursor: pointer;
+    }
+    QPushButton:pressed {
+        background-color: #bcd3f7;
+    }
+"""
+
+sidebar_style = """
+    QWidget#sidebar {
+        background-color: #1e1e2e;
+    }
+    QLabel#sidebarTitle {
+        color: #cdd6f4;
+        font-size: 18px;
+        font-weight: bold;
+        padding: 10px 0;
+    }
+    QPushButton.nav-btn {
+        background-color: transparent;
+        color: #a6adc8;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: left;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: none;
+    }
+    QPushButton.nav-btn:hover {
+        background-color: #313244;
+        color: #ffffff;
+    }
+    QPushButton#quitBtn {
+        background-color: #313244;
+        color: #f38ba8;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 10px 16px;
+        border: 1px solid #f38ba8;
+    }
+    QPushButton#quitBtn:hover {
+        background-color: #f38ba8;
+        color: #11111b;
+    }
+"""
+
+slider_style = """
+    QSlider::groove:horizontal {
+        border-radius: 4px;
+        height: 8px;
+        background: #313244;
+    }
+    QSlider::sub-page:horizontal {
+        background: #0763f7;
+        border-radius: 4px;
+    }
+    QSlider::handle:horizontal {
+        background: #ffffff;
+        border: 2px solid #0763f7;
+        width: 20px;
+        margin-top: -6px;
+        margin-bottom: -6px;
+        border-radius: 11px;
+    }
+    QSlider::handle:horizontal:hover {
+        background: #bcd3f7;
+    }
+"""
+
+
+# 2. SIDEBAR SETUP (LEFT PANEL)
+
+sidebar = QWidget()
+sidebar.setObjectName("sidebar")
+sidebar.setFixedWidth(220)
+sidebar.setStyleSheet(sidebar_style)
+
+sidebar_layout = QVBoxLayout(sidebar)
+sidebar_layout.setContentsMargins(15, 20, 15, 20)
+sidebar_layout.setSpacing(10)
+
+sidebar_title = QLabel("⚡ Dashboard")
+sidebar_title.setObjectName("sidebarTitle")
+sidebar_layout.addWidget(sidebar_title)
+
+# Navigation Buttons
+nav_home = QPushButton("🏠  Home")
+nav_home.setProperty("class", "nav-btn")
+nav_home.clicked.connect(lambda: orchestrator_click("Home"))
+
+nav_apps = QPushButton("🌐  Web Apps")
+nav_apps.setProperty("class", "nav-btn")
+
+nav_settings = QPushButton("⚙️  Settings")
+nav_settings.setProperty("class", "nav-btn")
+nav_settings.clicked.connect(lambda: orchestrator_click("Settings"))
+
+sidebar_layout.addWidget(nav_home)
+sidebar_layout.addWidget(nav_apps)
+sidebar_layout.addWidget(nav_settings)
+
+sidebar_layout.addStretch()
+
+quit_button = QPushButton("🚪 Quit")
+quit_button.setObjectName("quitBtn")
+quit_button.clicked.connect(lambda: orchestrator_click("Quit"))
+sidebar_layout.addWidget(quit_button)
+
+# 3. PAGES
+stacked_widget = QStackedWidget()
+
+# --- PAGE 1: HOME ---
+home_page = QWidget()
+home_layout = QVBoxLayout(home_page)
+home_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+home_layout.setSpacing(25)
+
+home_label = QLabel("Hello, friend!")
+home_label.setStyleSheet(
+    "font-size: 24px; font-weight: bold; color: #03b7ff;"
+)
+home_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+gmail_button = QPushButton("Gmail")
+aops_button = QPushButton("AoPS")
+gmail_button.setStyleSheet(action_btn_style)
+aops_button.setStyleSheet(action_btn_style)
+
+gmail_button.clicked.connect(lambda: orchestrator_click("Gmail"))
+aops_button.clicked.connect(lambda: orchestrator_click("AoPS"))
+
+button_row = QHBoxLayout()
+button_row.setSpacing(20)
+button_row.addWidget(gmail_button)
+button_row.addWidget(aops_button)
+
+home_layout.addWidget(home_label)
+home_layout.addLayout(button_row)
+
+
+# --- PAGE 2: SETTINGS ---
+settings_page = QWidget()
+settings_layout = QVBoxLayout(settings_page)
+settings_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+settings_layout.setSpacing(20)
+
+settings_label = QLabel("Settings Page")
+settings_label.setStyleSheet(
+    "font-size: 24px; font-weight: bold; color: #03b7ff;"
+)
+
+# Create Slider & its Label here
+slider = QSlider(Qt.Orientation.Horizontal)
+slider.setStyleSheet(slider_style)
+slider.setMinimum(0)
+slider.setMaximum(100)
+slider.setValue(50)
+slider.setFixedWidth(300)
+slider.valueChanged.connect(on_slider_change)
+
+value_label = QLabel(f"Current Value: {slider.value()}")
+value_label.setStyleSheet(
+    "color: #03b7ff; font-size: 16px; font-weight: bold;"
+)
+
+# Add elements to the settings layout
+settings_layout.addWidget(settings_label)
+settings_layout.addWidget(value_label)
+settings_layout.addWidget(slider)
+
+
+# Add pages to the StackedWidget
+stacked_widget.addWidget(home_page)  # Index 0
+stacked_widget.addWidget(settings_page)  # Index 1
+
+# 4. MASTER ROOT LAYOUT
+root_layout = QHBoxLayout(window)
+root_layout.setContentsMargins(0, 0, 0, 0)
+root_layout.setSpacing(0)
+
+root_layout.addWidget(sidebar)
+root_layout.addWidget(stacked_widget)
+
+window.show()
+sys.exit(app.exec())
