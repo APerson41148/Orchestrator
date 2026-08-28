@@ -1,48 +1,107 @@
 import platform
-import subprocess
+import random
 import sys
+import webbrowser
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSlider,
-    QStackedWidget,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QStackedWidget, QVBoxLayout, QWidget
+import search_recommendations
 
 current_os = platform.system().lower()
 
+active_theme = "#181825"
+silly_value = 0
 
-def on_slider_change(value):
-    # Updates the text when the slider moves
-    value_label.setText(f"Current Value: {value}")
+def unstringify_color(color):
+    clean_hex = color.lstrip("#")
+    r = int(clean_hex[0:2], 16)
+    g = int(clean_hex[2:4], 16)
+    b = int(clean_hex[4:6], 16)
+    return r, g, b
+
+def set_background(hex_color):
+    """Changes the background color of the main content area"""
+    content_container.setStyleSheet(
+        f"QWidget#contentContainer {{ background-color: {hex_color}; }}"
+    )
 
 
-def on_click(app_name, url):
-    if app_name == "Orchestrator":
-        sys.exit(0)
-    if current_os == "darwin":  # macOS
-        subprocess.run(["open", "-a", app_name, url])
-    elif current_os == "windows":  # Windows
-        subprocess.run(["cmd", "/c", "start", "chrome", url], shell=True)
-    elif current_os == "linux":  # Linux
-        subprocess.run(["google-chrome", url])
+def on_brightness(value, color=None):
+    """Dynamically adjust background brightness cleanly between 0% and 100%"""
+    global active_theme
+    if color is not None:
+        active_theme = color
+
+    r, g, b = unstringify_color(active_theme)
+    factor = value / 25.0
+
+    r_adj = min(255, max(0, int(r * factor)))
+    g_adj = min(255, max(0, int(g * factor)))
+    b_adj = min(255, max(0, int(b * factor)))
+
+    custom_color = f"#{r_adj:02x}{g_adj:02x}{b_adj:02x}"
+    set_background(custom_color)
+
+
+def background_slider_update(value):
+    """Updates the brightness label and background when slider moves"""
+    background_value_label.setText(f"Brightness: {value}%")
+    on_brightness(value)
+
+
+def update_home_title():
+    """Dynamically randomizes title text based on Sillyness level"""
+    if silly_value > 50:
+        silly_quotes = [
+            "Six Seven!",
+            "Are You A Fatty?",
+            "Get off of your computer and go outside! Do a situp or something!",
+            "Wassup!",
+            "What is the meaning of life?",
+            "Why is the sky blue?",
+        ]
+        home_label.setText(random.choice(silly_quotes))
+    else:
+        home_label.setText("Welcome Back!")
+
+
+def silly_slider_update(value):
+    """Updates the sillyness label and recalculates title text"""
+    global silly_value
+    silly_value = value
+    silly_value_label.setText(f"Sillyness: {value}%")
+    update_home_title()
+
+
+def open_url(url):
+    """Clean cross-platform browser opener"""
+    webbrowser.open(url)
+
+
+def on_search():
+    """Searches Google or opens direct URL when pressing Enter"""
+    query = search_bar.text().strip()
+    if query:
+        search_recommendations.on_search(query)
+        search_bar.clear()
 
 
 def orchestrator_click(button_name):
     if button_name == "Gmail":
-        on_click("Google Chrome", "https://mail.google.com/mail/u/0/#inbox")
+        open_url("https://mail.google.com/mail/u/0/#inbox")
     elif button_name == "AoPS":
-        on_click("Google Chrome", "https://artofproblemsolving.com/")
+        open_url("https://artofproblemsolving.com/")
+    elif button_name == "Google":
+        open_url("https://www.google.com/")
     elif button_name == "Quit":
-        on_click("Orchestrator", None)
+        sys.exit(0)
     elif button_name == "Home":
+        update_home_title()
         stacked_widget.setCurrentWidget(home_page)
+    elif button_name == "Web Apps":
+        stacked_widget.setCurrentWidget(web_apps_page)
     elif button_name == "Settings":
         stacked_widget.setCurrentWidget(settings_page)
+
 
 app = QApplication(sys.argv)
 
@@ -58,13 +117,12 @@ action_btn_style = """
         font-size: 16px;
         font-weight: bold;
         border-radius: 10px;
-        border: 2px solid #D93025;
-        padding: 25px 35px;
+        border: 2px solid #313244;
+        padding: 20px 30px;
         min-width: 140px;
     }
     QPushButton:hover {
         background-color: #2273f5;
-        cursor: pointer;
     }
     QPushButton:pressed {
         background-color: #bcd3f7;
@@ -73,7 +131,8 @@ action_btn_style = """
 
 sidebar_style = """
     QWidget#sidebar {
-        background-color: #1e1e2e;
+        background-color: #11111b;
+        border-right: 1px solid #313244;
     }
     QLabel#sidebarTitle {
         color: #cdd6f4;
@@ -92,11 +151,11 @@ sidebar_style = """
         border: none;
     }
     QPushButton.nav-btn:hover {
-        background-color: #313244;
+        background-color: #1e1e2e;
         color: #ffffff;
     }
     QPushButton#quitBtn {
-        background-color: #313244;
+        background-color: #1e1e2e;
         color: #f38ba8;
         font-size: 14px;
         font-weight: bold;
@@ -126,16 +185,33 @@ slider_style = """
         width: 20px;
         margin-top: -6px;
         margin-bottom: -6px;
-        border-radius: 11px;
+        border-radius: 10px;
     }
     QSlider::handle:horizontal:hover {
         background: #bcd3f7;
     }
 """
 
+search_style = """
+    QLineEdit {
+        background-color: #11111b;
+        color: #cdd6f4;
+        font-size: 15px;
+        border: 2px solid #313244;
+        border-radius: 12px;
+        padding: 10px 15px;
+        min-height: 25px;
+    }
+    QLineEdit:focus {
+        border: 2px solid #03b7ff;
+        background-color: #181825;
+    }
+    QLineEdit::placeholder {
+        color: #6c7086;
+    }
+"""
 
-# 2. SIDEBAR SETUP (LEFT PANEL)
-
+# 2. SIDEBAR SETUP
 sidebar = QWidget()
 sidebar.setObjectName("sidebar")
 sidebar.setFixedWidth(220)
@@ -145,17 +221,17 @@ sidebar_layout = QVBoxLayout(sidebar)
 sidebar_layout.setContentsMargins(15, 20, 15, 20)
 sidebar_layout.setSpacing(10)
 
-sidebar_title = QLabel("⚡ Dashboard")
+sidebar_title = QLabel("⚡ Orchestrator")
 sidebar_title.setObjectName("sidebarTitle")
 sidebar_layout.addWidget(sidebar_title)
 
-# Navigation Buttons
 nav_home = QPushButton("🏠  Home")
 nav_home.setProperty("class", "nav-btn")
 nav_home.clicked.connect(lambda: orchestrator_click("Home"))
 
 nav_apps = QPushButton("🌐  Web Apps")
 nav_apps.setProperty("class", "nav-btn")
+nav_apps.clicked.connect(lambda: orchestrator_click("Web Apps"))
 
 nav_settings = QPushButton("⚙️  Settings")
 nav_settings.setProperty("class", "nav-btn")
@@ -172,7 +248,7 @@ quit_button.setObjectName("quitBtn")
 quit_button.clicked.connect(lambda: orchestrator_click("Quit"))
 sidebar_layout.addWidget(quit_button)
 
-# 3. PAGES
+# 3. PAGES (Stacked Widget)
 stacked_widget = QStackedWidget()
 
 # --- PAGE 1: HOME ---
@@ -181,12 +257,19 @@ home_layout = QVBoxLayout(home_page)
 home_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 home_layout.setSpacing(25)
 
-home_label = QLabel("Hello, friend!")
-home_label.setStyleSheet(
-    "font-size: 24px; font-weight: bold; color: #03b7ff;"
-)
+home_label = QLabel("Welcome Back!")
+home_label.setStyleSheet("font-size: 26px; font-weight: bold; color: #03b7ff;")
 home_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+# Search Bar Setup
+search_bar = QLineEdit()
+search_bar.setPlaceholderText("🔍  Search Google or type a URL...")
+search_bar.setClearButtonEnabled(True)
+search_bar.setFixedWidth(380)
+search_bar.setStyleSheet(search_style)
+search_bar.returnPressed.connect(on_search)  # 👈 Pressing Enter executes search!
+
+# Buttons
 gmail_button = QPushButton("Gmail")
 aops_button = QPushButton("AoPS")
 gmail_button.setStyleSheet(action_btn_style)
@@ -201,51 +284,162 @@ button_row.addWidget(gmail_button)
 button_row.addWidget(aops_button)
 
 home_layout.addWidget(home_label)
+home_layout.addWidget(search_bar)
 home_layout.addLayout(button_row)
 
 
-# --- PAGE 2: SETTINGS ---
+# --- PAGE 2: WEB APPS ---
+web_apps_page = QWidget()
+web_apps_layout = QVBoxLayout(web_apps_page)
+web_apps_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+web_apps_layout.setSpacing(20)
+
+web_apps_label = QLabel("Saved Web Apps")
+web_apps_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #03b7ff;")
+
+apps_row = QHBoxLayout()
+apps_row.setSpacing(15)
+
+apps = ["Google", "Gmail", "AoPS"]
+
+for app_name in apps:
+    btn = QPushButton(app_name)
+    btn.setStyleSheet("""
+        QPushButton {
+            background-color: #0763f7;
+            color: white;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            padding: 15px 25px;
+            font-weight: bold;
+            font-size: 15px;
+            min-width: 100px;
+        }
+        QPushButton:hover {
+            background-color: #2273f5;
+        }
+    """)
+    btn.clicked.connect(
+        lambda checked, name=app_name: orchestrator_click(name)
+    )
+    apps_row.addWidget(btn)
+
+web_apps_layout.addWidget(web_apps_label)
+web_apps_layout.addLayout(apps_row)
+
+
+# --- PAGE 3: SETTINGS ---
 settings_page = QWidget()
 settings_layout = QVBoxLayout(settings_page)
 settings_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-settings_layout.setSpacing(20)
+settings_layout.setSpacing(15)
 
-settings_label = QLabel("Settings Page")
+settings_label = QLabel("Background Themes")
 settings_label.setStyleSheet(
     "font-size: 24px; font-weight: bold; color: #03b7ff;"
 )
 
-# Create Slider & its Label here
-slider = QSlider(Qt.Orientation.Horizontal)
-slider.setStyleSheet(slider_style)
-slider.setMinimum(0)
-slider.setMaximum(100)
-slider.setValue(50)
-slider.setFixedWidth(300)
-slider.valueChanged.connect(on_slider_change)
+theme_label = QLabel("Choose Preset Background Color:")
+theme_label.setStyleSheet("color: #a6adc8; font-size: 14px;")
 
-value_label = QLabel(f"Current Value: {slider.value()}")
-value_label.setStyleSheet(
-    "color: #03b7ff; font-size: 16px; font-weight: bold;"
+preset_row = QHBoxLayout()
+preset_row.setSpacing(10)
+
+themes = {
+    "Midnight": "#181825",
+    "Deep Blue": "#0b192c",
+    "Emerald": "#062c20",
+    "Purple": "#2a0845",
+}
+
+for name, hex_code in themes.items():
+    btn = QPushButton(name)
+    btn.setStyleSheet(f"""
+        QPushButton {{
+            background-color: {hex_code};
+            color: white;
+            border: 1px solid #cdd6f4;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: bold;
+        }}
+        QPushButton:hover {{
+            border: 2px solid #03b7ff;
+        }}
+    """)
+    btn.clicked.connect(
+        lambda checked, color=hex_code: on_brightness(background_slider.value(), color)
+    )
+    preset_row.addWidget(btn)
+
+background_slider_title = QLabel("Adjust Background Brightness:")
+background_slider_title.setStyleSheet(
+    "color: #a6adc8; font-size: 14px; margin-top: 15px;"
 )
 
-# Add elements to the settings layout
+background_slider = QSlider(Qt.Orientation.Horizontal)
+background_slider.setStyleSheet(slider_style)
+background_slider.setMinimum(10)
+background_slider.setMaximum(60)
+background_slider.setValue(25)
+background_slider.setFixedWidth(300)
+background_slider.valueChanged.connect(background_slider_update)
+
+background_value_label = QLabel(f"Brightness: {background_slider.value()}%")
+background_value_label.setStyleSheet(
+    "color: #03b7ff; font-size: 14px; font-weight: bold;"
+)
+
+silly_slider_title = QLabel("Adjust Sillyness Level:")
+silly_slider_title.setStyleSheet(
+    "color: #a6adc8; font-size: 14px; margin-top: 15px;"
+)
+
+silly_slider = QSlider(Qt.Orientation.Horizontal)
+silly_slider.setStyleSheet(slider_style)
+silly_slider.setMinimum(0)
+silly_slider.setMaximum(100)
+silly_slider.setValue(0)
+silly_slider.setFixedWidth(300)
+silly_slider.valueChanged.connect(silly_slider_update)
+
+silly_value_label = QLabel(f"Sillyness: {silly_slider.value()}%")
+silly_value_label.setStyleSheet(
+    "color: #03b7ff; font-size: 14px; font-weight: bold;"
+)
+
 settings_layout.addWidget(settings_label)
-settings_layout.addWidget(value_label)
-settings_layout.addWidget(slider)
+settings_layout.addWidget(theme_label)
+settings_layout.addLayout(preset_row)
+settings_layout.addWidget(background_slider_title)
+settings_layout.addWidget(background_slider)
+settings_layout.addWidget(background_value_label)
+settings_layout.addWidget(silly_slider_title)
+settings_layout.addWidget(silly_slider)
+settings_layout.addWidget(silly_value_label)
 
 
-# Add pages to the StackedWidget
-stacked_widget.addWidget(home_page)  # Index 0
-stacked_widget.addWidget(settings_page)  # Index 1
+# 4. ASSEMBLE CONTENT CONTAINER
+content_container = QWidget()
+content_container.setObjectName("contentContainer")
+set_background(active_theme)
 
-# 4. MASTER ROOT LAYOUT
+stacked_widget.addWidget(home_page)
+stacked_widget.addWidget(web_apps_page)
+stacked_widget.addWidget(settings_page)
+
+container_layout = QVBoxLayout(content_container)
+container_layout.setContentsMargins(0, 0, 0, 0)
+container_layout.addWidget(stacked_widget)
+
+
+# 5. DRAW LAYOUT
 root_layout = QHBoxLayout(window)
 root_layout.setContentsMargins(0, 0, 0, 0)
 root_layout.setSpacing(0)
 
 root_layout.addWidget(sidebar)
-root_layout.addWidget(stacked_widget)
+root_layout.addWidget(content_container)
 
 window.show()
 sys.exit(app.exec())
